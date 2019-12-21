@@ -1,5 +1,6 @@
 package com.gildedrose;
 
+@SuppressWarnings("WeakerAccess")
 class GildedRose {
     Item[] items;
 
@@ -8,55 +9,123 @@ class GildedRose {
     }
 
     public void updateQuality() {
-        for (int i = 0; i < items.length; i++) {
-            if (!items[i].name.equals("Aged Brie")
-                    && !items[i].name.equals("Backstage passes to a TAFKAL80ETC concert")) {
-                if (items[i].quality > 0) {
-                    if (!items[i].name.equals("Sulfuras, Hand of Ragnaros")) {
-                        items[i].quality = items[i].quality - 1;
-                    }
-                }
-            } else {
-                if (items[i].quality < 50) {
-                    items[i].quality = items[i].quality + 1;
+        for (Item item : items) {
+            updateQuality(item);
+        }
+    }
 
-                    if (items[i].name.equals("Backstage passes to a TAFKAL80ETC concert")) {
-                        if (items[i].sellIn < 11) {
-                            if (items[i].quality < 50) {
-                                items[i].quality = items[i].quality + 1;
-                            }
-                        }
+    private void updateQuality(Item item) {
+        final UpdateStrategy strategy = UpdateStrategy.forItem(item.name);
 
-                        if (items[i].sellIn < 6) {
-                            if (items[i].quality < 50) {
-                                items[i].quality = items[i].quality + 1;
-                            }
-                        }
-                    }
-                }
+        strategy.updateQuality(item);
+        strategy.updateSellIn(item);
+    }
+
+    private interface UpdateStrategy {
+        void updateSellIn(Item item);
+
+        void updateQuality(Item item);
+
+        static UpdateStrategy forItem(String name) {
+            if (name.startsWith("Backstage passes")) {
+                return new TicketUpdateStrategy();
+            } else if (name.startsWith("Conjured")) {
+                return new ConjuredUpdateStrategy();
             }
 
-            if (!items[i].name.equals("Sulfuras, Hand of Ragnaros")) {
-                items[i].sellIn = items[i].sellIn - 1;
-            }
-
-            if (items[i].sellIn < 0) {
-                if (!items[i].name.equals("Aged Brie")) {
-                    if (!items[i].name.equals("Backstage passes to a TAFKAL80ETC concert")) {
-                        if (items[i].quality > 0) {
-                            if (!items[i].name.equals("Sulfuras, Hand of Ragnaros")) {
-                                items[i].quality = items[i].quality - 1;
-                            }
-                        }
-                    } else {
-                        items[i].quality = items[i].quality - items[i].quality;
-                    }
-                } else {
-                    if (items[i].quality < 50) {
-                        items[i].quality = items[i].quality + 1;
-                    }
-                }
+            switch (name) {
+                case "Sulfuras, Hand of Ragnaros":
+                    return new SulfurasUpdateStrategy();
+                case "Aged Brie":
+                    return new AgedUpdateStrategy();
+                default:
+                    return new DefaultUpdateStrategy();
             }
         }
     }
+
+    private static class DefaultUpdateStrategy implements UpdateStrategy {
+        @Override
+        public void updateSellIn(Item item) {
+            item.sellIn -= 1;
+        }
+
+        @Override
+        public void updateQuality(Item item) {
+            if (item.sellIn > 0) {
+                decrementQuality(item, 1);
+            } else {
+                decrementQuality(item, 2);
+            }
+        }
+
+        protected static void incrementQuality(Item item, int amount) {
+            int newQuality = item.quality + amount;
+            if (newQuality > 50) {
+                item.quality = 50;
+            } else {
+                item.quality = newQuality;
+            }
+        }
+
+        protected static void decrementQuality(Item item, int amount) {
+            int newQuality = item.quality - amount;
+            if (newQuality < 0) {
+                item.quality = 0;
+            } else {
+                item.quality = newQuality;
+            }
+        }
+    }
+
+    private static class SulfurasUpdateStrategy implements UpdateStrategy {
+        @Override
+        public void updateSellIn(Item item) {
+
+        }
+
+        @Override
+        public void updateQuality(Item item) {
+
+        }
+    }
+
+    private static class ConjuredUpdateStrategy extends DefaultUpdateStrategy {
+        @Override
+        public void updateQuality(Item item) {
+            if (item.sellIn > 0) {
+                decrementQuality(item, 2);
+            } else {
+                decrementQuality(item, 4);
+            }
+        }
+    }
+
+    private static class TicketUpdateStrategy extends DefaultUpdateStrategy {
+        @Override
+        public void updateQuality(Item item) {
+            if (item.sellIn < 1) {
+                item.quality = 0;
+            } else if (item.sellIn < 6) {
+                incrementQuality(item, 3);
+            } else if (item.sellIn < 11) {
+                incrementQuality(item, 2);
+            } else {
+                incrementQuality(item, 1);
+            }
+        }
+    }
+
+    private static class AgedUpdateStrategy extends DefaultUpdateStrategy {
+
+        @Override
+        public void updateQuality(Item item) {
+            if (item.sellIn > 0) {
+                incrementQuality(item, 1);
+            } else {
+                incrementQuality(item, 2);
+            }
+        }
+    }
+
 }
